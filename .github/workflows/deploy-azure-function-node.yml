@@ -54,6 +54,36 @@ jobs:
           tenant-id: ${{ secrets.azure-tenant-id }}
           subscription-id: ${{ secrets.azure-subscription-id }}
 
+      - name: Run Database Migrations
+        run: |
+          if [ -d "prisma" ]; then
+            echo "Fetching database URL from function app config..."
+            DATABASE_URL=$(az functionapp config appsettings list --name ${{ inputs.app-name }} --resource-group MSC-QCU --query "[?name=='DATABASE_URL'].value" -o tsv)
+            if [ -n "$DATABASE_URL" ]; then
+              export DATABASE_URL=$DATABASE_URL
+              SERVER_NAME=$(echo $DATABASE_URL | sed -e 's|.*@||' -e 's|\..*||')
+              RUNNER_IP=$(curl -s https://api.ipify.org)
+              
+              echo "Adding temporary firewall rule on MySQL server: $SERVER_NAME for IP: $RUNNER_IP"
+              az mysql flexible-server firewall-rule create \
+                --resource-group MSC-QCU \
+                --name $SERVER_NAME \
+                --rule-name "temp-github-runner" \
+                --start-ip-address $RUNNER_IP \
+                --end-ip-address $RUNNER_IP
+              
+              # Set trap for guaranteed cleanup
+              trap 'echo "Cleaning up firewall rule..."; az mysql flexible-server firewall-rule delete --resource-group MSC-QCU --name $SERVER_NAME --rule-name "temp-github-runner" --yes || true' EXIT
+              
+              echo "Running Prisma migrations..."
+              npx prisma migrate deploy
+            else
+              echo "DATABASE_URL setting not found in function app."
+            fi
+          else
+            echo "Prisma directory not found, skipping migrations."
+          fi
+
       - name: Deploy to Azure Functions
         uses: Azure/functions-action@v1
         with:
