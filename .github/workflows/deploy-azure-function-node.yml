@@ -1,0 +1,61 @@
+name: Deploy to Azure Functions (Node.js)
+
+on:
+  workflow_call:
+    inputs:
+      node-version:
+        type: string
+        default: '20'
+      build-command:
+        type: string
+        default: 'npm run build'
+      app-name:
+        required: true
+        type: string
+      package-path:
+        type: string
+        default: '.'
+    secrets:
+      azure-client-id:
+        required: true
+      azure-tenant-id:
+        required: true
+      azure-subscription-id:
+        required: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node-version }}
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build project
+        run: ${{ inputs.build-command }}
+
+      - name: Generate Prisma Client
+        run: |
+          if grep -q "prisma" package.json; then
+            npx prisma generate
+          fi
+
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.azure-client-id }}
+          tenant-id: ${{ secrets.azure-tenant-id }}
+          subscription-id: ${{ secrets.azure-subscription-id }}
+
+      - name: Deploy to Azure Functions
+        uses: Azure/functions-action@v1
+        with:
+          app-name: ${{ inputs.app-name }}
+          package: ${{ inputs.package-path }}
