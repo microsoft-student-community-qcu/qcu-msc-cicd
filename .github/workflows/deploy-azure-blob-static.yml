@@ -1,0 +1,72 @@
+name: Deploy Static Website to Azure Blob Storage
+
+on:
+  workflow_call:
+    inputs:
+      node-version:
+        type: string
+        default: '22'
+      build-command:
+        type: string
+        default: 'npm run build:swa'
+      storage-account-name:
+        required: true
+        type: string
+      source-path:
+        type: string
+        default: 'dist/client'
+      destination-container:
+        type: string
+        default: '$web'
+    secrets:
+      azure-client-id:
+        required: true
+      azure-tenant-id:
+        required: true
+      azure-subscription-id:
+        required: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node-version }}
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build static SPA
+        run: ${{ inputs.build-command }}
+
+      - name: Copy _shell.html to index.html if needed
+        run: |
+          if [ -f "${{ inputs.source-path }}/_shell.html" ]; then
+            echo "Copying _shell.html to index.html..."
+            cp "${{ inputs.source-path }}/_shell.html" "${{ inputs.source-path }}/index.html"
+          else
+            echo "No _shell.html found, skipping copy."
+          fi
+
+      - name: Log in to Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.azure-client-id }}
+          tenant-id: ${{ secrets.azure-tenant-id }}
+          subscription-id: ${{ secrets.azure-subscription-id }}
+
+      - name: Upload to Azure Blob Storage
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            az storage blob upload-batch \
+              --account-name ${{ inputs.storage-account-name }} \
+              --auth-mode login \
+              --source ${{ inputs.source-path }} \
+              --destination '${{ inputs.destination-container }}' \
+              --overwrite
