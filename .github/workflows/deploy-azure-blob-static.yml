@@ -10,8 +10,9 @@ on:
         type: string
         default: 'npm run build:swa'
       storage-account-name:
-        required: true
+        required: false
         type: string
+        default: ''
       source-path:
         type: string
         default: 'dist/client'
@@ -32,6 +33,22 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Determine Storage Account Name
+        id: get-storage
+        run: |
+          if [ -n "${{ inputs.storage-account-name }}" ]; then
+            echo "name=${{ inputs.storage-account-name }}" >> "$GITHUB_OUTPUT"
+          else
+            BRANCH="${{ github.ref_name }}"
+            if [ "$BRANCH" = "develop" ]; then
+              echo "name=stsamscqcufrontenddev" >> "$GITHUB_OUTPUT"
+            elif [ "$BRANCH" = "release" ]; then
+              echo "name=stsamscqcufrontendrel" >> "$GITHUB_OUTPUT"
+            else
+              echo "name=stsamscqcubackend" >> "$GITHUB_OUTPUT"
+            fi
+          fi
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -65,7 +82,7 @@ jobs:
         with:
           inlineScript: |
             az storage blob upload-batch \
-              --account-name ${{ inputs.storage-account-name }} \
+              --account-name ${{ steps.get-storage.outputs.name }} \
               --auth-mode login \
               --source ${{ inputs.source-path }} \
               --destination '${{ inputs.destination-container }}' \
