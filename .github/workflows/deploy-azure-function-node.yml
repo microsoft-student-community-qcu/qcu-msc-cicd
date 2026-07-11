@@ -103,6 +103,31 @@ jobs:
               
               echo "Running Prisma migrations..."
               npx prisma migrate deploy
+
+              BRANCH_NAME="${{ github.ref_name }}"
+              if [ "$BRANCH_NAME" = "develop" ] || [ "$BRANCH_NAME" = "release" ]; then
+                echo "Running database seeding on branch $BRANCH_NAME..."
+                
+                # Fetch Better Auth secrets from Key Vault
+                VAULT_SECRET=$(az keyvault secret show --vault-name $KV_NAME --name better-auth-secret --query "value" -o tsv || echo "")
+                VAULT_URL=$(az keyvault secret show --vault-name $KV_NAME --name better-auth-url --query "value" -o tsv || echo "")
+                
+                # Set dynamic URL defaults using GitHub Repository Variables
+                if [ "$BRANCH_NAME" = "develop" ]; then
+                  DEFAULT_URL="${{ vars.DEV_BETTER_AUTH_URL }}"
+                elif [ "$BRANCH_NAME" = "release" ]; then
+                  DEFAULT_URL="${{ vars.RELEASE_BETTER_AUTH_URL }}"
+                else
+                  DEFAULT_URL="${{ vars.PROD_BETTER_AUTH_URL }}"
+                fi
+
+                export BETTER_AUTH_SECRET=${VAULT_SECRET:-"temporary_github_actions_seed_secret_12345"}
+                export BETTER_AUTH_URL=${VAULT_URL:-$DEFAULT_URL}
+                
+                npx prisma db seed
+              else
+                echo "Skipping database seeding on branch: $BRANCH_NAME"
+              fi
             else
               echo "DATABASE_URL setting not found in function app."
             fi
