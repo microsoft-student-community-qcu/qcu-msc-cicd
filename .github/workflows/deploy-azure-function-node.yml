@@ -75,7 +75,16 @@ jobs:
         run: |
           if [ -d "prisma" ]; then
             echo "Fetching database URL from function app config..."
-            DATABASE_URL=$(az functionapp config appsettings list --name ${{ steps.get-app.outputs.name }} --resource-group MSC-QCU --query "[?name=='DATABASE_URL'].value" -o tsv)
+            APP_NAME="${{ steps.get-app.outputs.name }}"
+            if [ "$APP_NAME" = "func-msc-qcu-backend-dev" ]; then
+              KV_NAME="kv-msc-qcu-dev"
+            elif [ "$APP_NAME" = "func-msc-qcu-backend-rel" ]; then
+              KV_NAME="kv-msc-qcu-release"
+            else
+              KV_NAME="kv-msc-qcu-prod"
+            fi
+            echo "Fetching DATABASE_URL secret from Key Vault: $KV_NAME..."
+            DATABASE_URL=$(az keyvault secret show --vault-name $KV_NAME --name database-url --query "value" -o tsv)
             if [ -n "$DATABASE_URL" ]; then
               export DATABASE_URL=$DATABASE_URL
               SERVER_NAME=$(echo $DATABASE_URL | sed -e 's|.*@||' -e 's|\..*||')
