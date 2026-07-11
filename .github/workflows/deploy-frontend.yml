@@ -1,0 +1,61 @@
+name: Deploy Frontend Combined
+
+on:
+  workflow_call:
+    inputs:
+      node-version:
+        type: string
+        default: '22'
+      app-name:
+        type: string
+        default: 'msc-qcu'
+      package-path:
+        type: string
+        default: '.output'
+      startup-command:
+        type: string
+        default: 'node server/index.mjs'
+      storage-account-name:
+        type: string
+        default: ''
+      source-path:
+        type: string
+        default: 'dist/client'
+      destination-container:
+        type: string
+        default: '$web'
+    secrets:
+      azure-client-id:
+        required: true
+      azure-tenant-id:
+        required: true
+      azure-subscription-id:
+        required: true
+
+jobs:
+  deploy-static-blob:
+    uses: microsoft-student-community-qcu/qcu-msc-cicd/.github/workflows/deploy-azure-blob-static.yml@main
+    with:
+      node-version: ${{ inputs.node-version }}
+      build-command: 'npm run build:swa'
+      storage-account-name: ${{ inputs.storage-account-name }}
+      source-path: ${{ inputs.source-path }}
+      destination-container: ${{ inputs.destination-container }}
+    secrets:
+      azure-client-id: ${{ secrets.azure-client-id }}
+      azure-tenant-id: ${{ secrets.azure-tenant-id }}
+      azure-subscription-id: ${{ secrets.azure-subscription-id }}
+
+  deploy-app-service:
+    if: github.ref_name == 'main'
+    uses: microsoft-student-community-qcu/qcu-msc-cicd/.github/workflows/deploy-azure-webapp-node.yml@main
+    with:
+      node-version: ${{ inputs.node-version }}
+      build-command: 'npm run build'
+      app-name: ${{ inputs.app-name }}
+      package-path: ${{ inputs.package-path }}
+      startup-command: ${{ inputs.startup-command }}
+    secrets:
+      azure-client-id: ${{ secrets.azure-client-id }}
+      azure-tenant-id: ${{ secrets.azure-tenant-id }}
+      azure-subscription-id: ${{ secrets.azure-subscription-id }}
