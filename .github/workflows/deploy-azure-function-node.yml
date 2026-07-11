@@ -10,8 +10,9 @@ on:
         type: string
         default: 'npm run build'
       app-name:
-        required: true
+        required: false
         type: string
+        default: ''
       package-path:
         type: string
         default: '.'
@@ -29,6 +30,22 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Determine Function App Name
+        id: get-app
+        run: |
+          if [ -n "${{ inputs.app-name }}" ]; then
+            echo "name=${{ inputs.app-name }}" >> "$GITHUB_OUTPUT"
+          else
+            BRANCH="${{ github.ref_name }}"
+            if [ "$BRANCH" = "develop" ]; then
+              echo "name=func-msc-qcu-backend-dev" >> "$GITHUB_OUTPUT"
+            elif [ "$BRANCH" = "release" ]; then
+              echo "name=func-msc-qcu-backend-rel" >> "$GITHUB_OUTPUT"
+            else
+              echo "name=func-msc-qcu-backend" >> "$GITHUB_OUTPUT"
+            fi
+          fi
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -58,7 +75,7 @@ jobs:
         run: |
           if [ -d "prisma" ]; then
             echo "Fetching database URL from function app config..."
-            DATABASE_URL=$(az functionapp config appsettings list --name ${{ inputs.app-name }} --resource-group MSC-QCU --query "[?name=='DATABASE_URL'].value" -o tsv)
+            DATABASE_URL=$(az functionapp config appsettings list --name ${{ steps.get-app.outputs.name }} --resource-group MSC-QCU --query "[?name=='DATABASE_URL'].value" -o tsv)
             if [ -n "$DATABASE_URL" ]; then
               export DATABASE_URL=$DATABASE_URL
               SERVER_NAME=$(echo $DATABASE_URL | sed -e 's|.*@||' -e 's|\..*||')
@@ -87,5 +104,5 @@ jobs:
       - name: Deploy to Azure Functions
         uses: Azure/functions-action@v1
         with:
-          app-name: ${{ inputs.app-name }}
+          app-name: ${{ steps.get-app.outputs.name }}
           package: ${{ inputs.package-path }}
