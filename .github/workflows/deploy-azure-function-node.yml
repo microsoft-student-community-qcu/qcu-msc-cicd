@@ -116,15 +116,18 @@ jobs:
                 # Set dynamic URL defaults using GitHub Repository Variables
                 if [ "$BRANCH_NAME" = "develop" ]; then
                   DEFAULT_URL="${{ vars.DEV_BETTER_AUTH_URL }}"
+                  DEFAULT_STORAGE="stsamscqcubackenddev"
                 elif [ "$BRANCH_NAME" = "release" ]; then
                   DEFAULT_URL="${{ vars.RELEASE_BETTER_AUTH_URL }}"
+                  DEFAULT_STORAGE="stsamscqcubackendrel"
                 else
                   DEFAULT_URL="${{ vars.PROD_BETTER_AUTH_URL }}"
+                  DEFAULT_STORAGE="stsamscqcubackend"
                 fi
 
                 export BETTER_AUTH_SECRET=${VAULT_SECRET:-"temporary_github_actions_seed_secret_12345"}
                 export BETTER_AUTH_URL=${VAULT_URL:-$DEFAULT_URL}
-                export AZURE_STORAGE_ACCOUNT_NAME=$VAULT_STORAGE_NAME
+                export AZURE_STORAGE_ACCOUNT_NAME=${VAULT_STORAGE_NAME:-$DEFAULT_STORAGE}
                 
                 npx prisma db seed
               else
