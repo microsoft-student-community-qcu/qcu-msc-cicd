@@ -64,6 +64,9 @@ jobs:
             npx prisma generate
           fi
 
+      - name: Prune dev dependencies
+        run: npm prune --omit=dev
+
       - name: Login to Azure
         uses: azure/login@v2
         with:
