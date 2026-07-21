@@ -150,6 +150,12 @@ jobs:
             npx prisma generate
           fi
 
+      - name: Install Windows-native optional deps (Azure Functions runs on Windows, CI runs on Linux)
+        run: |
+          if grep -q '"sharp"' package.json; then
+            npm install --no-save --omit=dev --os=win32 --cpu=x64 sharp
+          fi
+
       - name: Remove local settings before deployment
         run: rm -f local.settings.json
 
