@@ -112,6 +112,7 @@ jobs:
                 VAULT_SECRET=$(az keyvault secret show --vault-name $KV_NAME --name better-auth-secret --query "value" -o tsv || echo "")
                 VAULT_URL=$(az keyvault secret show --vault-name $KV_NAME --name better-auth-url --query "value" -o tsv || echo "")
                 VAULT_STORAGE_NAME=$(az keyvault secret show --vault-name $KV_NAME --name storage-account-name --query "value" -o tsv || echo "")
+                VAULT_RESEND_API_KEY=$(az keyvault secret show --vault-name $KV_NAME --name resend-api-key --query "value" -o tsv || echo "")
                 
                 # Set dynamic URL defaults using GitHub Repository Variables
                 if [ "$BRANCH_NAME" = "develop" ]; then
@@ -128,6 +129,7 @@ jobs:
                 export BETTER_AUTH_SECRET=${VAULT_SECRET:-"temporary_github_actions_seed_secret_12345"}
                 export BETTER_AUTH_URL=${VAULT_URL:-$DEFAULT_URL}
                 export AZURE_STORAGE_ACCOUNT_NAME=${VAULT_STORAGE_NAME:-$DEFAULT_STORAGE}
+                export RESEND_API_KEY=$VAULT_RESEND_API_KEY
                 
                 npx prisma db seed
               else
