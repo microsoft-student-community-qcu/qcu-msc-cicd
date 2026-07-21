@@ -60,6 +60,9 @@ jobs:
 
       - name: Build static SPA
         run: ${{ inputs.build-command }}
+        env:
+          VITE_API_URL: ${{ github.ref_name == 'develop' && vars.DEV_VITE_API_URL || github.ref_name == 'release' && vars.RELEASE_VITE_API_URL || vars.PROD_VITE_API_URL }}
+          VITE_SENTRY_DSN: ${{ github.ref_name == 'develop' && vars.DEV_VITE_SENTRY_DSN || github.ref_name == 'release' && vars.RELEASE_VITE_SENTRY_DSN || vars.PROD_VITE_SENTRY_DSN }}
 
       - name: Copy _shell.html to index.html if needed
         run: |
