@@ -144,7 +144,11 @@ jobs:
           fi
 
       - name: Prune dev dependencies before deployment
-        run: npm prune --omit=dev
+        run: |
+          npm prune --omit=dev
+          if grep -q "prisma" package.json; then
+            npx prisma generate
+          fi
 
       - name: Remove local settings before deployment
         run: rm -f local.settings.json
