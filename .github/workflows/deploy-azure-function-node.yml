@@ -90,16 +90,17 @@ jobs:
               SERVER_NAME=$(echo $DATABASE_URL | sed -e 's|.*@||' -e 's|\..*||')
               RUNNER_IP=$(curl -s https://api.ipify.org)
               
-              echo "Adding temporary firewall rule on MySQL server: $SERVER_NAME for IP: $RUNNER_IP"
+              RULE_NAME="temp-gh-${{ github.run_id }}"
+              echo "Adding temporary firewall rule on MySQL server: $SERVER_NAME for IP: $RUNNER_IP (Rule: $RULE_NAME)"
               az mysql flexible-server firewall-rule create \
                 --resource-group MSC-QCU \
                 --name $SERVER_NAME \
-                --rule-name "temp-github-runner" \
+                --rule-name "$RULE_NAME" \
                 --start-ip-address $RUNNER_IP \
                 --end-ip-address $RUNNER_IP
               
               # Set trap for guaranteed cleanup
-              trap 'echo "Cleaning up firewall rule..."; az mysql flexible-server firewall-rule delete --resource-group MSC-QCU --name $SERVER_NAME --rule-name "temp-github-runner" --yes || true' EXIT
+              trap 'echo "Cleaning up firewall rule..."; az mysql flexible-server firewall-rule delete --resource-group MSC-QCU --name $SERVER_NAME --rule-name "$RULE_NAME" --yes || true' EXIT
               
               echo "Running Prisma migrations..."
               npx prisma migrate deploy
