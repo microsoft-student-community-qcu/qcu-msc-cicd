@@ -45,17 +45,3 @@ jobs:
       azure-client-id: ${{ secrets.azure-client-id }}
       azure-tenant-id: ${{ secrets.azure-tenant-id }}
       azure-subscription-id: ${{ secrets.azure-subscription-id }}
-
-  deploy-app-service:
-    if: github.ref_name == 'main'
-    uses: microsoft-student-community-qcu/qcu-msc-cicd/.github/workflows/deploy-azure-webapp-node.yml@main
-    with:
-      node-version: ${{ inputs.node-version }}
-      build-command: 'npm run build'
-      app-name: ${{ inputs.app-name }}
-      package-path: ${{ inputs.package-path }}
-      startup-command: ${{ inputs.startup-command }}
-    secrets:
-      azure-client-id: ${{ secrets.azure-client-id }}
-      azure-tenant-id: ${{ secrets.azure-tenant-id }}
-      azure-subscription-id: ${{ secrets.azure-subscription-id }}
