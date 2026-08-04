@@ -35,6 +35,8 @@ on:
         required: false
       cloudflare-api-token:
         required: false
+      vite-sentry-dsn:
+        required: false
 
 jobs:
   deploy-static-blob:
@@ -51,4 +53,5 @@ jobs:
       azure-subscription-id: ${{ secrets.azure-subscription-id }}
       cloudflare-zone-id: ${{ secrets.CLOUDFLARE_ZONE_ID || secrets.cloudflare-zone-id }}
       cloudflare-api-token: ${{ secrets.CLOUDFLARE_API_TOKEN || secrets.cloudflare-api-token }}
+      vite-sentry-dsn: ${{ secrets.VITE_SENTRY_DSN || secrets.vite-sentry-dsn }}
 
