@@ -26,6 +26,10 @@ on:
         required: true
       azure-subscription-id:
         required: true
+      cloudflare-zone-id:
+        required: false
+      cloudflare-api-token:
+        required: false
 
 jobs:
   build-and-deploy:
@@ -90,3 +94,28 @@ jobs:
               --source ${{ inputs.source-path }} \
               --destination '${{ inputs.destination-container }}' \
               --overwrite
+
+      - name: Purge Cloudflare Edge Cache for Subdomain
+        if: github.ref_name == 'main'
+        run: |
+          STORAGE="${{ steps.get-storage.outputs.name }}"
+          case "$STORAGE" in
+            "stsamscqcubackend")  DOMAIN="https://msc-qcu.tech" ;;
+            "stsamscqcuadmin")    DOMAIN="https://admin.msc-qcu.tech" ;;
+            *)                    DOMAIN="" ;;
+          esac
+
+          ZONE_ID="${{ secrets.cloudflare-zone-id }}"
+          TOKEN="${{ secrets.cloudflare-api-token }}"
+
+          if [ -n "$DOMAIN" ] && [ -n "$ZONE_ID" ] && [ -n "$TOKEN" ]; then
+            echo "Purging Cloudflare cache for $DOMAIN on main branch..."
+            curl -X POST "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/purge_cache" \
+              -H "Authorization: Bearer $TOKEN" \
+              -H "Content-Type: application/json" \
+              --data "{\"files\": [\"$DOMAIN/\", \"$DOMAIN/index.html\"]}"
+          else
+            echo "Cloudflare zone or API token missing, skipping purge."
+          fi
+
+

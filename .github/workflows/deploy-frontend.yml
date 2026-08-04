@@ -31,6 +31,10 @@ on:
         required: true
       azure-subscription-id:
         required: true
+      cloudflare-zone-id:
+        required: false
+      cloudflare-api-token:
+        required: false
 
 jobs:
   deploy-static-blob:
@@ -45,3 +49,6 @@ jobs:
       azure-client-id: ${{ secrets.azure-client-id }}
       azure-tenant-id: ${{ secrets.azure-tenant-id }}
       azure-subscription-id: ${{ secrets.azure-subscription-id }}
+      cloudflare-zone-id: ${{ secrets.CLOUDFLARE_ZONE_ID || secrets.cloudflare-zone-id }}
+      cloudflare-api-token: ${{ secrets.CLOUDFLARE_API_TOKEN || secrets.cloudflare-api-token }}
+
