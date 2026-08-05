@@ -69,6 +69,8 @@ jobs:
         env:
           VITE_API_URL: ${{ github.ref_name == 'develop' && vars.DEV_VITE_API_URL || github.ref_name == 'release' && vars.RELEASE_VITE_API_URL || vars.PROD_VITE_API_URL }}
           VITE_SENTRY_DSN: ${{ secrets.vite-sentry-dsn || secrets.VITE_SENTRY_DSN || (github.ref_name == 'develop' && vars.DEV_VITE_SENTRY_DSN || github.ref_name == 'release' && vars.RELEASE_VITE_SENTRY_DSN || vars.PROD_VITE_SENTRY_DSN) }}
+          VITE_SENTRY_ENV: ${{ github.ref_name == 'develop' && 'development' || github.ref_name == 'release' && 'release' || 'production' }}
+          VITE_APP_VERSION: ${{ github.sha }}
 
       - name: Copy _shell.html to index.html if needed
         run: |
