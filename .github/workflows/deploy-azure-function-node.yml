@@ -16,6 +16,10 @@ on:
       package-path:
         type: string
         default: '.'
+      run-seed:
+        type: boolean
+        default: false
+        required: false
     secrets:
       azure-client-id:
         required: true
@@ -106,7 +110,8 @@ jobs:
               npx prisma migrate deploy
 
               BRANCH_NAME="${{ github.ref_name }}"
-              if [ "$BRANCH_NAME" = "develop" ] || [ "$BRANCH_NAME" = "release" ]; then
+              RUN_SEED="${{ inputs.run-seed }}"
+              if [ "$RUN_SEED" = "true" ] && { [ "$BRANCH_NAME" = "develop" ] || [ "$BRANCH_NAME" = "release" ]; }; then
                 echo "Running database seeding on branch $BRANCH_NAME..."
                 
                 # Fetch Better Auth secrets from Key Vault
@@ -134,7 +139,7 @@ jobs:
                 
                 npx prisma db seed
               else
-                echo "Skipping database seeding on branch: $BRANCH_NAME"
+                echo "Skipping database seeding (run-seed is '$RUN_SEED', branch is '$BRANCH_NAME')"
               fi
             else
               echo "DATABASE_URL setting not found in function app."
