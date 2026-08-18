@@ -96,15 +96,25 @@ jobs:
               
               RULE_NAME="temp-gh-${{ github.run_id }}"
               echo "Adding temporary firewall rule on MySQL server: $SERVER_NAME for IP: $RUNNER_IP (Rule: $RULE_NAME)"
-              az mysql flexible-server firewall-rule create \
-                --resource-group MSC-QCU \
-                --name $SERVER_NAME \
-                --rule-name "$RULE_NAME" \
-                --start-ip-address $RUNNER_IP \
-                --end-ip-address $RUNNER_IP
-              
-              # Set trap for guaranteed cleanup
-              trap 'echo "Cleaning up firewall rule..."; az mysql flexible-server firewall-rule delete --resource-group MSC-QCU --name $SERVER_NAME --rule-name "$RULE_NAME" --yes || true' EXIT
+              for attempt in 1 2 3 4 5; do
+                if az mysql flexible-server firewall-rule create \
+                  --resource-group MSC-QCU \
+                  --name $SERVER_NAME \
+                  --rule-name "$RULE_NAME" \
+                  --start-ip-address $RUNNER_IP \
+                  --end-ip-address $RUNNER_IP; then
+                  break
+                fi
+                if [ "$attempt" = "5" ]; then
+                  echo "Failed to create firewall rule after 5 attempts."
+                  exit 1
+                fi
+                echo "Firewall rule create failed (attempt $attempt/5), likely a concurrent operation on the shared MySQL server. Retrying in $((attempt * 10))s..."
+                sleep $((attempt * 10))
+              done
+
+              # Set trap for guaranteed cleanup (retries too, since this server is shared across environments)
+              trap 'echo "Cleaning up firewall rule..."; for attempt in 1 2 3 4 5; do az mysql flexible-server firewall-rule delete --resource-group MSC-QCU --name $SERVER_NAME --rule-name "$RULE_NAME" --yes && break; echo "Firewall rule delete failed (attempt $attempt/5), retrying in $((attempt * 10))s..."; sleep $((attempt * 10)); done || true' EXIT
               
               echo "Running Prisma migrations..."
               npx prisma migrate deploy
