@@ -95,14 +95,16 @@ jobs:
               RUNNER_IP=$(curl -s https://api.ipify.org)
               
               RULE_NAME="temp-gh-${{ github.run_id }}"
+              SUBSCRIPTION_ID=$(az account show --query id -o tsv)
+              MYSQL_API_VERSION="2025-06-30"
+              FIREWALL_RULE_URL="https://management.azure.com/subscriptions/$SUBSCRIPTION_ID/resourceGroups/MSC-QCU/providers/Microsoft.DBforMySQL/flexibleServers/$SERVER_NAME/firewallRules/$RULE_NAME?api-version=$MYSQL_API_VERSION"
+
               echo "Adding temporary firewall rule on MySQL server: $SERVER_NAME for IP: $RUNNER_IP (Rule: $RULE_NAME)"
+              # Uses az rest pinned to a stable (non-preview) api-version: the az mysql CLI's
+              # default api-version (2025-06-01-preview) reliably 500s on firewallRules/write.
               for attempt in 1 2 3 4 5; do
-                if az mysql flexible-server firewall-rule create \
-                  --resource-group MSC-QCU \
-                  --name $SERVER_NAME \
-                  --rule-name "$RULE_NAME" \
-                  --start-ip-address $RUNNER_IP \
-                  --end-ip-address $RUNNER_IP; then
+                if az rest --method put --url "$FIREWALL_RULE_URL" \
+                  --body "{\"properties\":{\"startIpAddress\":\"$RUNNER_IP\",\"endIpAddress\":\"$RUNNER_IP\"}}"; then
                   break
                 fi
                 if [ "$attempt" = "5" ]; then
@@ -114,7 +116,7 @@ jobs:
               done
 
               # Set trap for guaranteed cleanup (retries too, since this server is shared across environments)
-              trap 'echo "Cleaning up firewall rule..."; for attempt in 1 2 3 4 5; do az mysql flexible-server firewall-rule delete --resource-group MSC-QCU --name $SERVER_NAME --rule-name "$RULE_NAME" --yes && break; echo "Firewall rule delete failed (attempt $attempt/5), retrying in $((attempt * 10))s..."; sleep $((attempt * 10)); done || true' EXIT
+              trap 'echo "Cleaning up firewall rule..."; for attempt in 1 2 3 4 5; do az rest --method delete --url "$FIREWALL_RULE_URL" && break; echo "Firewall rule delete failed (attempt $attempt/5), retrying in $((attempt * 10))s..."; sleep $((attempt * 10)); done || true' EXIT
               
               echo "Running Prisma migrations..."
               npx prisma migrate deploy
